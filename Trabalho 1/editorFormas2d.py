@@ -44,10 +44,9 @@ class Rect(object):
         glPushMatrix()
         glMultMatrixf(self.m)
 
-        glTranslatef(self.center[0], self.center[1], 0)  # Transladar para o centro do retângulo
-        glRotatef(self.rotation, 0, 0, 1)  # Aplicar rotação em torno do eixo Z
-        glTranslatef(-self.center[0], -self.center[1], 0)  # Transladar de volta para a posição original
-
+        glTranslatef(self.center[0], self.center[1], 0)  # Translate to the center of the rectangle
+        glRotatef(self.rotation, 0, 0, 1)  # Apply rotation around the Z-axis
+        glTranslatef(-self.center[0], -self.center[1], 0)  # Translate back to the original position
 
         glColor3f(1, 1, 1)  # Set the border color to white
         glPolygonMode(GL_FRONT_AND_BACK, GL_LINE)

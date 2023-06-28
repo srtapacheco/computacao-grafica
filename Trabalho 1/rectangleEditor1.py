@@ -40,6 +40,7 @@ def reshape( width, height):
     gluOrtho2D(0,width,height,0)
     glMatrixMode (GL_MODELVIEW)
 
+# evento de clique do mouse
 def mouse (button, state, x, y):
     global lastx,lasty,picked
     if state!=GLUT_DOWN: return
@@ -51,6 +52,7 @@ def mouse (button, state, x, y):
             if s.contains([x,y]): picked = s
         lastx,lasty = x,y
 
+#arrasto do mouse
 def mouse_drag(x, y):
     if mode == "CREATE":
         shapes[-1].set_point(1,[x,y])
