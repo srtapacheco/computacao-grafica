@@ -1,3 +1,5 @@
+
+
 import sys
 from OpenGL.GLUT import *
 from OpenGL.GLU import *
@@ -170,10 +172,12 @@ def draw_cube(size, texture_id):
 
 def generate_rotation_angles():
     # Gera ângulos de rotação aleatórios para cada cubo
+    rotation_axes = [['x' if random.random() < 0.5 else 'y' for _ in range(n)] for _ in range(n)]
     rotation_angles = [[[random.choice([0, 90, 180, 270]) for _ in range(n)] for _ in range(n)] for _ in range(n)]
-    return rotation_angles
+    return rotation_angles, rotation_axes
 
-rotation_angles = generate_rotation_angles()  # Gera novos ângulos de rotação
+rotation_angles, rotation_axes = generate_rotation_angles()  # Gera novos ângulos de rotação e eixos
+
 
 def draw_scene(flatColors=False):
     # Desenha a cena, emitindo um 'nome' para cada cubo
@@ -200,7 +204,10 @@ def draw_scene(flatColors=False):
                 glLoadName(name)
                 glPushMatrix()
                 glTranslatef(x * size, y * size, z * size)
-                glRotatef(rotation_angles[i][j][k], 1, 0, 0)  # Aplica a rotação específica do cubo
+                if rotation_axes[i][j] == 'x':
+                    glRotatef(rotation_angles[i][j][k], 1, 0, 0)  # Aplica a rotação específica do cubo no eixo X
+                else:
+                    glRotatef(rotation_angles[i][j][k], 0, 0, 1)  # Aplica a rotação específica do cubo no eixo Y
                 draw_cube(size * 0.4, textureId)
                 glPopMatrix()
 
