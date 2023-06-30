@@ -1,11 +1,10 @@
-
-
 import sys
 from OpenGL.GLUT import *
 from OpenGL.GLU import *
 from OpenGL.GL import *
 from PIL import Image
 import random
+import numpy as np
 
 # Objeto selecionado
 selected = None
@@ -128,7 +127,7 @@ def draw_cube(size, texture_id):
     glTexCoord2f(0.0, 0.0)
     glVertex3f(size, -size, -size)  # Canto inferior esquerdo
 
-    # Face superior #Branco
+    # Face superior #Branca
     glTexCoord2f(0.75, 1.0)    # Canto superior esquerdo da região
     glVertex3f(-size, size, -size)  # Canto superior esquerdo
     glTexCoord2f(0.75, 0.75)   # Canto inferior esquerdo da região
@@ -171,13 +170,12 @@ def draw_cube(size, texture_id):
     glEnd()  # Finaliza o desenho do cubo
 
 def generate_rotation_angles():
+    rotation_axes = [['x' if random.random() < 0.5 else 'z' for _ in range(n)] for _ in range(n)]
     # Gera ângulos de rotação aleatórios para cada cubo
-    rotation_axes = [['x' if random.random() < 0.5 else 'y' for _ in range(n)] for _ in range(n)]
-    rotation_angles = [[[random.choice([0, 90, 180, 270]) for _ in range(n)] for _ in range(n)] for _ in range(n)]
+    rotation_angles = [[[random.choice([-270, 270]) for _ in range(n)] for _ in range(n)] for _ in range(n)]
     return rotation_angles, rotation_axes
 
-rotation_angles, rotation_axes = generate_rotation_angles()  # Gera novos ângulos de rotação e eixos
-
+rotation_angles, rotation_axes = generate_rotation_angles()  # Gera novos ângulos de rotação
 
 def draw_scene(flatColors=False):
     # Desenha a cena, emitindo um 'nome' para cada cubo
@@ -187,7 +185,7 @@ def draw_scene(flatColors=False):
     glTranslatef(0, 0, -3)
     glRotatef(-80, 1, 0, 0)
     glRotatef(angle_x, 1, 0, 0)  # Rotação em torno do eixo X (vertical)
-    glRotatef(angle_y, 0, 1, 0)  # Rotação em torno do eixo Y (horizontal)
+    glRotatef(angle_y, 0, 0, 1)  # Rotação em torno do eixo Y (horizontal)
     size = 1 / n
     for i in range(n):
         x = i - (n - 1) / 2
@@ -205,9 +203,17 @@ def draw_scene(flatColors=False):
                 glPushMatrix()
                 glTranslatef(x * size, y * size, z * size)
                 if rotation_axes[i][j] == 'x':
-                    glRotatef(rotation_angles[i][j][k], 1, 0, 0)  # Aplica a rotação específica do cubo no eixo X
-                else:
-                    glRotatef(rotation_angles[i][j][k], 0, 0, 1)  # Aplica a rotação específica do cubo no eixo Y
+                    if rotation_angles[i][j][k] == 270:
+                        glRotatef(-270, 1, 0, 0)  # Rotação para cima
+                    else:
+                        glRotatef(270, 1, 0, 0)  # Rotação para baixo
+                elif rotation_axes[i][j] == 'z':
+                    if rotation_angles[i][j][k] == 270:
+                        glRotatef(270, 0, 0, 1)  # Rotação para direita
+                    else:
+                        glRotatef(-270, 0, 0, 1)  # Rotação para esquerda
+
+
                 draw_cube(size * 0.4, textureId)
                 glPopMatrix()
 
@@ -267,7 +273,17 @@ def pick(x,y):
     return -1 
 
 
-def mousePressed(button,state,x,y):
+# Função para realizar rotação em torno do eixo Y
+def rotate(coord, angle):
+    angle = np.radians(angle)
+    rotation_matrix = np.array([
+        [np.cos(angle), 0, np.sin(angle)],
+        [0, 1, 0],
+        [-np.sin(angle), 0, np.cos(angle)]
+    ])
+    return np.dot(rotation_matrix, coord)
+
+def mousePressed(button, state, x, y):
     global selected, is_dragging, prev_x, prev_y
     if button == GLUT_LEFT_BUTTON:
         if state == GLUT_DOWN:
@@ -278,8 +294,82 @@ def mousePressed(button,state,x,y):
     if state == GLUT_DOWN:
         selected = pick(x, y)
         if selected >= 0:
-            removed.add(selected)
+            i, j, k = selected // (n * n), (selected // n) % n, selected % n
+            cube_rotation_axis = rotation_axes[i][j]
+            cube_rotation_angle = rotation_angles[i][j][k]
+            if cube_rotation_axis == 'x':
+                if cube_rotation_angle > 0:
+                    cube_sense = "positivo"
+                    cube_direction = "cima"
+                else:
+                    cube_sense = "negativo"
+                    cube_direction = "baixo"
+            elif cube_rotation_axis == 'z':
+                if cube_rotation_angle > 0:
+                    cube_sense = "positivo"
+                    cube_direction = "direita"
+                else:
+                    cube_sense = "negativo"
+                    cube_direction = "esquerda"
+
+            #print("Direção do cubo: {}. Sentido do cubo: {}.".format(cube_direction, cube_sense))
+            if not check_same_axis(selected, cube_rotation_axis, cube_rotation_angle):
+                print("NAO HÁ outros cubos na mesma linha ou coluna na direção do ângulo de rotação")
+                removed.add(selected)
+            else:
+                print("EXISTEM outros cubos na mesma linha ou coluna na direção do ângulo de rotação")
     glutPostRedisplay()
+
+def check_same_axis(cube_index, axis, cube_direction):
+    cube_index_temp = cube_index
+    i, j, k = cube_index // (n * n), (cube_index // n) % n, cube_index % n
+    # Verifica o eixo de rotação
+    if axis == 'x':
+        n_axis = 0
+        if (k == 2 and cube_direction > 0):
+            return False
+        elif (k == 0 and cube_direction < 0):
+            return False
+        else:    
+            if cube_direction > 0:    
+                for column in range(k + 1, n):
+                    cube_index_temp+=1
+                    if (cube_index_temp) not in removed:
+                        n_axis += 1
+            else:
+                for column in range(k - 1, -1, -1):
+                    cube_index_temp-=1
+                    if (cube_index_temp) not in removed:
+                        n_axis += 1
+
+    elif axis == 'z':
+        # Calcula o número de cubos na mesma linha
+        n_axis = 0
+        # Calcula o número de cubos na mesma linha
+        if (i == 2 and cube_direction > 0):
+            return False
+        elif (i == 0 and cube_direction < 0):
+            return False
+        else:        
+            if cube_direction > 0:
+                for linha in range(i + 1, n):
+                    cube_index_temp +=1
+                    if (cube_index_temp) not in removed:
+                        n_axis += 1
+            else:
+                for linha in range(i - 1, -1, -1):
+                    cube_index_temp-=1
+                    if (cube_index_temp) not in removed:
+                        n_axis += 1
+
+                    
+    # Verifica se há outros cubos na mesma linha ou coluna na direção do ângulo de rotação
+    if n_axis > 0:
+        return True
+    else:
+        return False
+
+
 
 def mouseMoved(x, y):
     # Função de callback para movimento do mouse
@@ -294,19 +384,23 @@ def mouseMoved(x, y):
     glutPostRedisplay()
 
 def idle():
+    """Idle callback. Rotate and redraw the scene"""
     glutPostRedisplay()
 
 def main():
+    # Função principal
     glutInit(sys.argv)
     glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGBA | GLUT_DEPTH | GLUT_MULTISAMPLE)
     glutInitWindowSize(width, height)
     glutInitWindowPosition(100, 100)
     glutCreateWindow("Tap Away 3D")
     init()
-    glutReshapeFunc(reshape)
     glutDisplayFunc(display)
+    glutReshapeFunc(reshape)
     glutMouseFunc(mousePressed)
     glutMotionFunc(mouseMoved)
+    glutIdleFunc(idle)
     glutMainLoop()
 
-main()
+if __name__ == "__main__":
+    main()
