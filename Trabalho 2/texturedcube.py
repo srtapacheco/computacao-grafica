@@ -3,6 +3,7 @@ from OpenGL.GLUT import *
 from OpenGL.GLU import *
 import sys
 from PIL import Image
+import random
 
 def loadTexture(filename):
     "Loads an image from a file as a texture"
@@ -23,6 +24,8 @@ def loadTexture(filename):
 
 def drawCube():
     glBegin(GL_QUADS)
+    
+    # Face frontal
     glNormal3f(0, 0, 1)
     glTexCoord2f(0.0, 0.0)
     glVertex3f(-1.0, -1.0, 1.0)
@@ -32,14 +35,108 @@ def drawCube():
     glVertex3f(1.0, 1.0, 1.0)
     glTexCoord2f(0.0, 1.0)
     glVertex3f(-1.0, 1.0, 1.0)
+    
+    # Face traseira
+    glNormal3f(0, 0, -1)
+    glTexCoord2f(0.0, 0.0)
+    glVertex3f(-1.0, -1.0, -1.0)
+    glTexCoord2f(1.0, 0.0)
+    glVertex3f(1.0, -1.0, -1.0)
+    glTexCoord2f(1.0, 1.0)
+    glVertex3f(1.0, 1.0, -1.0)
+    glTexCoord2f(0.0, 1.0)
+    glVertex3f(-1.0, 1.0, -1.0)
+    
+    # Face superior
+    glNormal3f(0, 1, 0)
+    glTexCoord2f(0.0, 0.0)
+    glVertex3f(-1.0, 1.0, -1.0)
+    glTexCoord2f(1.0, 0.0)
+    glVertex3f(1.0, 1.0, -1.0)
+    glTexCoord2f(1.0, 1.0)
+    glVertex3f(1.0, 1.0, 1.0)
+    glTexCoord2f(0.0, 1.0)
+    glVertex3f(-1.0, 1.0, 1.0)
+    
+    # Face inferior
+    glNormal3f(0, -1, 0)
+    glTexCoord2f(0.0, 0.0)
+    glVertex3f(-1.0, -1.0, -1.0)
+    glTexCoord2f(1.0, 0.0)
+    glVertex3f(1.0, -1.0, -1.0)
+    glTexCoord2f(1.0, 1.0)
+    glVertex3f(1.0, -1.0, 1.0)
+    glTexCoord2f(0.0, 1.0)
+    glVertex3f(-1.0, -1.0, 1.0)
+    
+    # Face direita
+    glNormal3f(1, 0, 0)
+    glTexCoord2f(0.0, 0.0)
+    glVertex3f(1.0, -1.0, -1.0)
+    glTexCoord2f(1.0, 0.0)
+    glVertex3f(1.0, 1.0, -1.0)
+    glTexCoord2f(1.0, 1.0)
+    glVertex3f(1.0, 1.0, 1.0)
+    glTexCoord2f(0.0, 1.0)
+    glVertex3f(1.0, -1.0, 1.0)
+    
+    # Face esquerda
+    glNormal3f(-1, 0, 0)
+    glTexCoord2f(0.0, 0.0)
+    glVertex3f(-1.0, -1.0, -1.0)
+    glTexCoord2f(1.0, 0.0)
+    glVertex3f(-1.0, -1.0, 1.0)
+    glTexCoord2f(1.0, 1.0)
+    glVertex3f(-1.0, 1.0, 1.0)
+    glTexCoord2f(0.0, 1.0)
+    glVertex3f(-1.0, 1.0, -1.0)
+    
     glEnd()
+
+def animate_cube_movement(cube):
+    def animate():
+        nonlocal cube
+        if cube['position'][1] >= 2.0:
+            cube['visible'] = False
+            glutPostRedisplay()
+            return
+        cube['position'][1] += 0.01
+        glutTimerFunc(10, animate, 0)
+        glutPostRedisplay()
+
+    glutTimerFunc(10, animate, 0)
+
+cubes = []
+
+def create_cubes():
+    size = 0.5
+    for i in range(10):
+        x = random.uniform(-1.5, 1.5)
+        y = random.uniform(-1.5, 1.5)
+        z = random.uniform(-1.5, 1.5)
+        cube = {
+            'position': [x, y, z],
+            'size': size,
+            'texture_id': loadTexture("arrow.jpg"),
+            'visible': True
+        }
+        cubes.append(cube)
 
 def display():
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
     glMatrixMode(GL_MODELVIEW)
     glLoadIdentity()
     glTranslatef(0, 0, -5)
-    drawCube()
+
+    for cube in cubes:
+        if cube['visible']:
+            glPushMatrix()
+            glTranslatef(cube['position'][0], cube['position'][1], cube['position'][2])
+            glRotatef(-270, 1, 0, 0)  # Rotação para cima
+            glBindTexture(GL_TEXTURE_2D, cube['texture_id'])
+            drawCube()
+            glPopMatrix()
+
     glutSwapBuffers()
 
 def reshape(w, h):
@@ -54,30 +151,10 @@ def mouse(button, state, x, y):
         winX = x
         winY = viewport[3] - y
         z = glReadPixels(winX, winY, 1, 1, GL_DEPTH_COMPONENT, GL_FLOAT)
-        direction = getArrowDirection(winX, winY, z)
-        print("Arrow Direction:", direction)
-
-def getArrowDirection(x, y, z):
-    modelview = glGetDoublev(GL_MODELVIEW_MATRIX)
-    projection = glGetDoublev(GL_PROJECTION_MATRIX)
-    viewport = glGetIntegerv(GL_VIEWPORT)
-
-    objX, objY, objZ = gluUnProject(x, y, z, modelview, projection, viewport)
-
-    if objX > 0.5:
-        return "Right"
-    elif objX < -0.5:
-        return "Left"
-    elif objY > 0.5:
-        return "Top"
-    elif objY < -0.5:
-        return "Bottom"
-    elif objZ > 0.5:
-        return "Back"
-    elif objZ < -0.5:
-        return "Front"
-    else:
-        return "Unknown"
+        for cube in cubes:
+            if cube['visible'] and cube['position'][0] - cube['size'] <= winX <= cube['position'][0] + cube['size'] and \
+                    cube['position'][1] - cube['size'] <= winY <= cube['position'][1] + cube['size']:
+                animate_cube_movement(cube)
 
 width, height = 500, 500
 
@@ -86,7 +163,16 @@ def init():
     glEnable(GL_LIGHTING)
     glEnable(GL_LIGHT0)
     glEnable(GL_MULTISAMPLE)
-    textureId = loadTexture("arrow2.jpg")
+    glEnable(GL_COLOR_MATERIAL)
+    glEnable(GL_NORMALIZE)
+    glShadeModel(GL_SMOOTH)
+    glLightfv(GL_LIGHT0, GL_AMBIENT, [0.2, 0.2, 0.2, 1.0])
+    glLightfv(GL_LIGHT0, GL_DIFFUSE, [0.8, 0.8, 0.8, 1.0])
+    glLightfv(GL_LIGHT0, GL_POSITION, [1.0, 1.0, 1.0, 0.0])
+    glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT, [0.2, 0.2, 0.2, 1.0])
+    glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, [0.8, 0.8, 0.8, 1.0])
+    glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, [1.0, 1.0, 1.0, 1.0])
+    glMaterialf(GL_FRONT_AND_BACK, GL_SHININESS, 100.0)
     glEnable(GL_TEXTURE_2D)
 
 glutInit(sys.argv)
@@ -97,4 +183,5 @@ glutDisplayFunc(display)
 glutReshapeFunc(reshape)
 glutMouseFunc(mouse)
 init()
+create_cubes()
 glutMainLoop()
