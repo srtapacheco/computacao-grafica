@@ -2,8 +2,6 @@ import sys
 from OpenGL.GLUT import *
 from OpenGL.GLU import *
 from OpenGL.GL import *
-from PIL import Image
-import random
 
 # Selected object
 selected = None
@@ -16,28 +14,6 @@ n = 3
 
 # rotation angle
 angle = 0
-
-# Variables for mouse dragging
-is_dragging = False
-prev_x = 0
-prev_y = 0
-
-def loadTexture(filename):
-    # Carrega uma imagem de arquivo como uma textura
-    imagefile = Image.open(filename)
-    sx, sy = imagefile.size[0:2]
-    global pixels
-    pixels = imagefile.convert("RGBA").tobytes("raw", "RGBA", 0, -1)
-    image = glGenTextures(1)
-    glBindTexture(GL_TEXTURE_2D, image)
-    glPixelStorei(GL_UNPACK_ALIGNMENT, 1)
-    glTexImage2D(GL_TEXTURE_2D, 0, 3, sx, sy, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixels)
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP)
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP)
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR)
-    glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_DECAL)
-    return image
 
 def draw_scene(flatColors = False):
     "Draws the scene emitting a 'name' for each cube"
@@ -58,8 +34,7 @@ def draw_scene(flatColors = False):
                 if flatColors:
                     glColor3f((i+1)/n, (j+1)/n, (k+1)/n)
                 # Ignore removed objects
-                if name in removed: 
-                    continue 
+                if name in removed: continue 
                 glLoadName(name)
                 glPushMatrix()
                 glTranslatef(x*size,y*size,z*size)
@@ -68,7 +43,7 @@ def draw_scene(flatColors = False):
             
 def display():
     draw_scene();
-    glutSwapBuffers ()
+    glutSwapBuffers ();
 
 def init ():
     glClearColor (0.0, 0.0, 0.0, 0.0);
@@ -82,11 +57,6 @@ def init ():
     # Helps with antialiasing
     glEnable(GL_MULTISAMPLE)
 
-    # Inicializa a texturização
-    global textureId
-    textureId = loadTexture("arrow.jpg")
-    glEnable(GL_TEXTURE_2D)
-
 
 def reshape(width,height):
     glMatrixMode (GL_PROJECTION)
@@ -99,11 +69,9 @@ def reshape(width,height):
  
 def pick(x,y):
     glDisable(GL_LIGHTING)
-    glDisable(GL_TEXTURE_2D)  # Desativa a texturização temporariamente
     draw_scene(True)
     glFlush()
     glEnable (GL_LIGHTING)
-    glEnable(GL_TEXTURE_2D)  # Reativa a texturização
     buf = glReadPixels (x,windowSize[1]-y,1,1,GL_RGB,GL_FLOAT)
     pixel = buf[0][0]
     r,g,b = pixel
@@ -112,40 +80,32 @@ def pick(x,y):
     return -1 
 
 def mousePressed(button,state,x,y):
-    global selected, is_dragging, prev_x, prev_y
-    if button == GLUT_LEFT_BUTTON:
-        if state == GLUT_DOWN:
-            is_dragging = True
-            prev_x, prev_y = x, y
-        elif state == GLUT_UP:
-            is_dragging = False
+    global selected
     if state == GLUT_DOWN:
-        selected = pick(x, y)
+        global prevx, prevy, prevz 
+        prevx,prevy = x,y
+        selected = pick(x,y)
         if selected >= 0:
             removed.add(selected)
     glutPostRedisplay()
 
-def mouseMoved(x, y):
-    global angle, prev_x, prev_y
-    if is_dragging:
-        delta_x = x - prev_x
-        delta_y = y - prev_y
-        angle += delta_x * 0.1
-        prev_x = x
-        prev_y = y
+def idle():
+    """Idle callback. Rotate and redraw the scene"""
+    global angle
+    angle += 0.4
     glutPostRedisplay()
 
 def main():
-    glutInit(sys.argv)
-    glutInitDisplayMode (GLUT_DOUBLE | GLUT_RGBA | GLUT_DEPTH | GLUT_MULTISAMPLE)
+    glutInit(sys.argv);
+    glutInitDisplayMode (GLUT_DOUBLE | GLUT_RGBA | GLUT_DEPTH | GLUT_MULTISAMPLE);
     glutInitWindowSize (400, 400); 
-    glutInitWindowPosition (100, 100)
-    glutCreateWindow ("picking")
-    init()
+    glutInitWindowPosition (100, 100);
+    glutCreateWindow ("picking");
+    init ();
     glutReshapeFunc(reshape)
     glutDisplayFunc(display)
     glutMouseFunc(mousePressed)
-    glutMotionFunc(mouseMoved)
-    glutMainLoop()
+    glutIdleFunc(idle)
+    glutMainLoop();
 
 main()
